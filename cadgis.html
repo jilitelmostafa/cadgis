@@ -87,19 +87,38 @@ html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family: Ari
 @media (max-width:768px){
   #searchBoxOSM, #suggestions {width:160px;}
 }
+
+/* زر تبديل الخلفيات في اليمين العلوي (قبل البحث بقليل) */
+#basemapToggle {
+  position:absolute;
+  top:10px;
+  right:250px; /* حتى لا يتداخل مع البحث */
+  z-index:2100;
+  padding:6px 10px;
+  font-size:12px;
+  border-radius:6px;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  cursor:pointer;
+}
+#basemapToggle:hover { background:#1d4ed8; }
 </style>
 </head>
 <body>
 
 <div id="app">
 <header id="header">
-CadGIS | Titres fonciers | Bornes  | Zonage | Limites ADM
+CadGIS | Titres fonciers  | Bornes  | Zonage | Limites ADM
 </header>
 
 <main id="content">
 <div id="map">
-<div id="watermark">@CartoMaroc</div>
+  <div id="watermark">@CartoMaroc</div>
 </div>
+
+<!-- زر تبديل الخلفية -->
+<button id="basemapToggle">🗺️ OSM</button>
 
 <!-- مربع البحث الكامل -->
 <div id="searchContainer">
@@ -113,23 +132,11 @@ CadGIS | Titres fonciers | Bornes  | Zonage | Limites ADM
 
 <div id="popup" class="ol-popup"></div>
 
-<div id="legend">
-<div class="legend-item">
-<div class="legend-color" style="background:rgba(76, 175, 80, 0.7);"></div>
-<span>Provinces</span>
-</div>
-<div style="margin-top: 8px; font-size: 10px;">
-<span>Email: contact@cartomaroc.com</span>
-</div>
-</div>
-</main>
-</div>
-
 <script>
 document.addEventListener("DOMContentLoaded", function(){
 
 const geojsonSource = new ol.source.Vector({
-  url:"https://raw.githubusercontent.com/Ayoub-WebGis9/CartoMaroc/main/PROVINCE.geojson",
+  url:"https://ia601703.us.archive.org/6/items/prov_ma_202601/prov_ma.txt",
   format: new ol.format.GeoJSON()
 });
 
@@ -143,7 +150,7 @@ function getProvinceName(feature){
 const geojsonLayer = new ol.layer.Vector({
   source:geojsonSource,
   style:function(feature){
-    const fillColor="rgba(76, 175, 80, 0.7)";
+    const fillColor = "rgba(244, 67, 54, 0.1)";
     return new ol.style.Style({
       stroke:new ol.style.Stroke({color:"black", width:1.3}),
       fill:new ol.style.Fill({color:fillColor}),
@@ -157,10 +164,33 @@ const geojsonLayer = new ol.layer.Vector({
   }
 });
 
+/* ثلاث خلفيات: OSM, Esri, Sat */
+const osmStandard = new ol.layer.Tile({
+  source:new ol.source.OSM(),
+  visible:true
+});
+
+const esriImagery = new ol.layer.Tile({
+  source:new ol.source.XYZ({
+    url:'https://server.arcgisonline.com/ArcGIS/rest/services/' +
+        'World_Imagery/MapServer/tile/{z}/{y}/{x}'
+  }),
+  visible:false
+});
+
+const satLike = new ol.layer.Tile({
+  source:new ol.source.XYZ({
+    url:'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'
+  }),
+  visible:false
+});
+
 const map=new ol.Map({
   target:"map",
   layers:[
-    new ol.layer.Tile({source:new ol.source.OSM()}),
+    osmStandard,
+    esriImagery,
+    satLike,
     geojsonLayer
   ],
   view:new ol.View({
@@ -168,6 +198,29 @@ const map=new ol.Map({
     zoom:6
   })
 });
+
+/* تلوين أصفر عند التحديد */
+const selectInteraction = new ol.interaction.Select({
+  layers: [geojsonLayer],
+  style: function(feature){
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({
+        color: "#facc15",
+        width: 2.5
+      }),
+      fill: new ol.style.Fill({
+        color: "rgba(250, 204, 21, 0.45)"
+      }),
+      text: new ol.style.Text({
+        text: getProvinceName(feature),
+        font:"bold 12px Arial",
+        fill:new ol.style.Fill({color:"#000"}),
+        stroke:new ol.style.Stroke({color:"#fff", width:2})
+      })
+    });
+  }
+});
+map.addInteraction(selectInteraction);
 
 const popup=new ol.Overlay({
   element:document.getElementById("popup"),
@@ -177,24 +230,81 @@ const popup=new ol.Overlay({
 map.addOverlay(popup);
 
 const provinceDownloadLinks = {
-  "Fahs-Anjra":"https://cartomaroc.com/data/Fahs-Anjra.zip",
-  "Deriouch":"https://cartomaroc.com/data/Deriouch.zip",
-  "Moulay Yacoub":"https://cartomaroc.com/data/Moulay-Yacoub.zip",
-  "Mediouna":"https://cartomaroc.com/data/Mediouna.zip",
-  "Fkih Ben Saleh":"https://cartomaroc.com/data/Fkih-Ben-Saleh.zip",
-  "Youssoufia":"https://cartomaroc.com/data/Youssoufia.zip",
-  "Inezgane-Ait Melloul":"https://cartomaroc.com/data/Inezgane-Ait-Melloul.zip",
-  "Tinghir":"https://cartomaroc.com/data/Tinghir.zip",
-  "Sidi Ifni":"https://cartomaroc.com/data/Sidi-Ifni.zip",
-  "Tarfaya":"https://cartomaroc.com/data/Tarfaya.zip",
-  "Marrakech":"https://cartomaroc.com/data/Marrakech.zip",
-  "Tanger-Asilah":"https://cartomaroc.com/data/Tanger-Asilah.zip",
-  "Skhirate-Temara":"https://cartomaroc.com/data/Skhirate-Temara.zip",
-  "Taza":"https://cartomaroc.com/data/Taza.zip",
-  "Settat":"https://cartomaroc.com/data/Settat.zip",
-  "Guercif":"https://cartomaroc.com/data/Guercif.zip",
-  "M'Diq-Fnideq":"https://cartomaroc.com/data/MDiq-Fnideq.zip",
-  "Khouribga":"https://cartomaroc.com/data/Khouribga.zip"
+  "OUAD EDDAHAB":"https://drive.google.com/file/d/1W8TCjsJgGSjER0IZ8-oAd6YYIMAZzmul/view?usp=drivesdk",
+  "AOUSSERD":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "BOUJDOUR":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "LAAYOUNE":"https://drive.google.com/file/d/1skAk7DnHMT8KbdckQueH7Vt8OB1RcwUy/view?usp=drivesdk",
+  "TRAFAYA":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "ESSMARA":"https://drive.google.com/file/d/1rjAx7oPAKQ00teooftXITob8yT-Qpruf/view?usp=drivesdk",
+  "CHTOUKA AIT BAHA":"https://drive.google.com/file/d/16H78YAucHZ2dmHBlQoEYAZjyTOeRKxrn/view?usp=drivesdk",
+  "TAROUDANNT":"https://drive.google.com/file/d/1xkm_jDhqofnXlYJwMFtXJvnotQNplNSw/view?usp=drivesdk",
+  "TIZNIT":"https://drive.google.com/file/d/1fhYvVKrfxseEfJYmFjNQIzxQaglz825M/view?usp=drivesdk",
+  "TATA":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "AGADIR IDA OU TANANE":"https://drive.google.com/file/d/1UWDokzDiJuNO6_vqc590B87iEF9_IcTK/view?usp=drivesdk",
+  "INEZEGANE AIT MELLOUL":"https://drive.google.com/file/d/1yyd-GQF5BVfF4SrYlwGPEkr7ucxYhiql/view?usp=drivesdk",
+  "TINGHIR":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "OURZAZTE":"https://drive.google.com/file/d/1pUAIzQBujnLogFnYkx6Tyjj_bn7nS_7N/view?usp=drivesdk",
+  "ZAGORA":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "MIDELT":"https://drive.google.com/file/d/1XBBoFWEYrWED6bpn0Cjv_gKOEaLqgacF/view?usp=drivesdk",
+  "ERRACHIDIA":"https://drive.google.com/file/d/1CQUSWjOngEjJ0wqb5KCyYZM6IwyvN5bN/view?usp=drivesdk",
+  "SAFI":"https://drive.google.com/file/d/1VdWIMs5G0wHg7KxqvW8ZzXhVRc3T1ios/view?usp=drivesdk",
+  "ESSAOUIRA":"https://drive.google.com/file/d/1L_t0wJAVCE9ARPZqIj0oO0zs5WvGz-Tr/view?usp=drivesdk",
+  "CHICHAOUA":"https://drive.google.com/file/d/1dcpUuDW09LVUXAH8adSFGArqpI8xGthu/view?usp=drivesdk",
+  "AL HAOUZ":"https://drive.google.com/file/d/1L1oXEZxemYHwawUMOJRr2ge5rUDRrXuE/view?usp=drivesdk",
+  "EL KELAA DES SRAGHNA":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "REHAMNA":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "MARRAKECH":"https://drive.google.com/file/d/1L1oXEZxemYHwawUMOJRr2ge5rUDRrXuE/view?usp=drivesdk",
+  "YOUSSOUFIA":"https://drive.google.com/file/d/16pejhEpwbKjxDxOiMCalhAkDPKRPcVGa/view?usp=drivesdk",
+  "SETTAT":"https://drive.google.com/file/d/1Rm37o7-ybmDhlLAJWg2-LUVoH0ZxqIx7/view?usp=drivesdk",
+  "SIDI BENNOUR":"https://drive.google.com/file/d/1eLfmImakIX_B2h0KNBCYrx3LF8H0Mm--/view?usp=drivesdk",
+  "BEN SLIMANE":"https://drive.google.com/file/d/1Rlk-Lhw7oDB5EPT6vpG1cd-g1D5rOQYS/view?usp=drivesdk",
+  "BERCHID":"https://drive.google.com/file/d/1urqgs3lWp_6bKJkded0vET9UI5rS2brY/view?usp=drivesdk",
+  "MÉDIOUNA":"https://drive.google.com/file/d/1rjAx7oPAKQ00teooftXITob8yT-Qpruf/view?usp=drivesdk",
+  "MOHAMMEDIA":"https://drive.google.com/file/d/1Nz8_GFQNNw_4FEgXeTHTcubYd1oxMKyt/view?usp=drivesdk",
+  "EL JADIDA":"https://drive.google.com/file/d/1s04RDcVBgGizNhdbg4Sz_ZY36twLx0hS/view?usp=drivesdk",
+  "CASABLANCA":"https://drive.google.com/file/d/19dK56HuNRDSxyaXPbBGA7bpaZkEo5bIq/view?usp=drivesdk",
+  "NOUACER":"https://drive.google.com/file/d/1ZTRHOun341z907E2ncXxrxjJgDd--E83/view?usp=drivesdk",
+  "AZILAL":"https://drive.google.com/file/d/1yf752JHPOL8o8ol8bZv3_orPaqIpD60t/view?usp=drivesdk",
+  "KHENIFRA":"https://drive.google.com/file/d/1ROc0iqfuE_koHagIEjtORQA9jyyhrBsD/view?usp=drivesdk",
+  "KHOURIBGA":"https://drive.google.com/file/d/1V-nlu6qBQIBwhCqT-yV7pHOJK_8z3AyZ/view?usp=drivesdk",
+  "BENI MELLAL":"https://drive.google.com/file/d/1anC3cMqAJrhrjhZ21NPK8CnMuJcWLHOu/view?usp=drivesdk",
+  "FQUIH BEN SALAH":"https://drive.google.com/file/d/1rjAx7oPAKQ00teooftXITob8yT-Qpruf/view?usp=drivesdk",
+  "SALÉ":"https://drive.google.com/file/d/1Ky7LBN5aLnkTZwdC3PWYfT6nC4ci98Qr/view?usp=drivesdk",
+  "KHEMISSET":"https://drive.google.com/file/d/1d5IUnW_2pAhg64VUqCmf3dk8fr9fG6d_/view?usp=drivesdk",
+  "SIDI KACEM":"https://drive.google.com/file/d/1-exZqMZPQ62H4X3PH5iFoiic1XzSvDXv/view?usp=drivesdk",
+  "SIDI SLIMANE":"https://drive.google.com/file/d/1Zg_ZHhCCm11UG740ntFhOojgK3Qn6ZZF/view?usp=drivesdk",
+  "KÉNITRA":"https://drive.google.com/file/d/1fhdAWLXrNEcGR42QRX6b8q9zh3BfP2Ry/view?usp=drivesdk",
+  "SKHIRATE- TEMARA":"https://drive.google.com/file/d/106K0yigp55ZDAGNQY_XVVY5WmZ-bAEJH/view?usp=drivesdk",
+  "RABAT":"https://drive.google.com/file/d/13QhQIUO1ItLQi133fQ8p2yxHsEdw0oVn/view?usp=drivesdk",
+  "EL HAJEB":"https://drive.google.com/file/d/1BS7zD6tcsHBTIc8_GRnPWHN06veAOavG/view?usp=drivesdk",
+  "TAZA":"https://drive.google.com/file/d/1t2o1j6mwy2BW9mkfCVzOFTS-KQhr3w4H/view?usp=drivesdk",
+  "FÈS":"https://drive.google.com/file/d/1a6QUwgao4okjcyR1V_Hz3BAWZVeo-MS5/view?usp=drivesdk",
+  "BOULEMANE":"https://drive.google.com/file/d/1MO94Ql8RAyZaRSVW6R5uhA5wlvaA3q1L/view?usp=drivesdk",
+  "MEKNES":"https://drive.google.com/file/d/1a8GSI4_0a6L1hgkaAO0LrJBZ4X0fa6K4/view?usp=drivesdk",
+  "MOULAY YACOUB":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "SEFROU":"https://drive.google.com/file/d/1ppx8GAqzlTGkrfG9aqX3GDkSt2m6tpJg/view?usp=drivesdk",
+  "TAOUNATE":"https://drive.google.com/file/d/1nTYogtuaLXvMO6LGNkplVDIB8AGKsNrl/view?usp=drivesdk",
+  "IFRANE":"https://drive.google.com/file/d/1c1w2yGvR3cahFsSbCSt7kD2maEkedhr7/view?usp=drivesdk",
+  "GUERSSIF":"https://drive.google.com/file/d/1X-Z6WjtJUp7Zj-ggm9PvWJZiE_DlP0AZ/view?usp=drivesdk",
+  "DRIOUCH":"https://drive.google.com/file/d/1YfXPI41zaqDRkX0LVMtdQyGlzD65ZWi-/view?usp=drivesdk",
+  "FIGUIG":"https://drive.google.com/file/d/1wanlzg6Fa9G_Wi6818LwpNn1kNTJntJm/view?usp=drivesdk",
+  "JRADA":"https://drive.google.com/file/d/1V-iz009XJ2IaQOZVcAK0vdPRqbIY4Czj/view?usp=drivesdk",
+  "OUJDA - ANGAD":"https://drive.google.com/file/d/1G1P-MyrpQFederk_zbkBAr8MUoynV6Lj/view?usp=drivesdk",
+  "TAOURIRT":"https://drive.google.com/file/d/14YVjpHq26bcoIjSO-VoKTVNhgzxBQdNY/view?usp=drivesdk",
+  "BERKANE":"https://drive.google.com/file/d/1sv-PSyXqi5uSg-ddUoUBJ9rh2096_OPW/view?usp=drivesdk",
+  "NADOR":"https://drive.google.com/file/d/1wanlzg6Fa9G_Wi6818LwpNn1kNTJntJm/view?usp=drivesdk",
+  "OUAZZANE":"https://drive.google.com/file/d/1t2o1j6mwy2BW9mkfCVzOFTS-KQhr3w4H/view?usp=drivesdk",
+  "EL FAHS - ANGRA":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "TANGER - ASILAH":"https://drive.google.com/file/d/1YlidcDUw3SPD7FeNnignFL7TesbRaxp3/view?usp=drivesdk",
+  "CHEFCHAOUEN":"https://drive.google.com/file/d/1yyd-GQF5BVfF4SrYlwGPEkr7ucxYhiql/view?usp=drivesdk",
+  "LARACHE":"https://drive.google.com/file/d/1BVFiiO3aRAGQRAOws-wZyeZoMBfveQS2/view?usp=drivesdk",
+  "TETOUAN":"https://drive.google.com/file/d/1ykxVLBOxAwNM5H61uMDdh2b05v5ftgku/view?usp=drivesdk",
+  "M'DIQ-FNIDEQ":"https://drive.google.com/file/d/16UBnn2PPiHhBYEpQCNPRL29tdv98zX7T/view?usp=drivesdk",
+  "AL HOUCEIMA":"https://drive.google.com/file/d/1YfXPI41zaqDRkX0LVMtdQyGlzD65ZWi-/view?usp=drivesdk",
+  "ASSA - ZAG":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "GUELMIM":"https://drive.google.com/file/d/1nXiPzn8Q-wXaJvoy7m7gEBZNzlY-WKc1/view?usp=drivesdk",
+  "SIDI  IFNI":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link",
+  "TAN - TAN":"https://drive.google.com/file/d/1q__rToOcK8IiQoiuiCSjFYXOTTGA_NzJ/view?usp=drive_link"
 };
 
 window.downloadProvinceData=function(provinceName){
@@ -211,13 +321,40 @@ window.contactWhatsApp=function(provinceName){
   window.open(whatsappURL,"_blank");
 };
 
-function showPopup(feature,coord){
-  const name=getProvinceName(feature);
-  let html=`<b>${name}</b><br>ℹ️ Données disponibles sur demande<br>`;
-  html+=`<button class="request-btn" onclick="downloadProvinceData('${name}')">📱 Demander ces données</button><br>`;
-  html+=`<button class="download-btn" onclick="contactWhatsApp('${name}')">📞 Contacter via WhatsApp</button>`;
+/* ===== popup مع اسم فرنسي وعربي ===== */
+function showPopup(feature, coord){
+  const nomFr = feature.get('NOM_PROV') || getProvinceName(feature);
+  const nomAr = feature.get('nomArabic') || '';
+
+  let html = `
+    <b>${nomFr}</b><br>
+    <span style="font-weight:bold; color:#FF0000;">
+      Titres fonciers | Bornes | Zonage | ${nomAr}
+    </span><br>
+     ℹ️ Données disponibles sur demande
+<br>
+
+
+  `;
+
+  html += `
+    <button class="request-btn" onclick="downloadProvinceData('${nomFr}')">
+      📱 Demander ces données
+    </button><br>
+  `;
+
+  html += `
+    <button class="download-btn" onclick="contactWhatsApp('${nomFr}')">
+      📞 Contacter via WhatsApp
+    </button>  <br>
+    Email: <a href="mailto:contact@cartomaroc.com">contact@cartomaroc.com</a>
+  `;
+
+
   popup.getElement().innerHTML=html;
   popup.setPosition(coord);
+
+  
 }
 
 map.on("click",(evt)=>{
@@ -273,6 +410,29 @@ showSearchSmall.addEventListener("click",()=>{
 document.addEventListener("click",function(e){
   if(e.target!==searchBox) suggestions.style.display="none";
 });
+
+/* تبديل بين OSM / Esri / Sat */
+const basemapBtn = document.getElementById('basemapToggle');
+const basemaps = [
+  {layer: osmStandard, label: 'OSM'},
+  {layer: esriImagery, label: 'Esri'},
+  {layer: satLike,     label: 'Sat'}
+];
+let currentBase = 0;
+
+function setBasemap(index){
+  basemaps.forEach((b,i)=> b.layer.setVisible(i === index));
+  basemapBtn.textContent = '🗺️ ' + basemaps[index].label;
+}
+
+basemapBtn.addEventListener('click', () => {
+  currentBase = (currentBase + 1) % basemaps.length;
+  setBasemap(currentBase);
+});
+
+// افتراضي: OSM
+setBasemap(0);
+
 });
 </script>
 
