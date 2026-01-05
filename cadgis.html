@@ -1,1180 +1,280 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CartoMaroc - خرائط استخدام الأراضي</title>
-    
-    <!-- OpenLayers CSS & JS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
-    <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
-    
-    <style>
-        /* إعدادات عامة */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
-        
-        /* الحاوية الرئيسية */
-        #app {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background: #f8fafc;
-        }
-        
-        /* الهيدر المحسّن */
-        #header {
-            flex-shrink: 0;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            text-align: center;
-            padding: 14px 16px;
-            font-size: clamp(16px, 4vw, 20px);
-            font-weight: 700;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            position: relative;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        
-        .header-title {
-            flex: 1;
-            text-align: center;
-            font-size: clamp(14px, 3.5vw, 18px);
-        }
-        
-        .header-icon {
-            font-size: 20px;
-        }
-        
-        /* منطقة المحتوى */
-        #content {
-            position: relative;
-            flex: 1;
-            overflow: hidden;
-        }
-        
-        /* الخريطة */
-        #map {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-        
-        /* علامة مائية */
-        .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(20px, 6vw, 36px);
-            font-weight: 900;
-            color: rgba(99, 102, 241, 0.08);
-            pointer-events: none;
-            z-index: 500;
-            white-space: nowrap;
-            text-shadow: 2px 2px 8px rgba(255,255,255,0.8);
-            font-family: 'Arial Black', sans-serif;
-        }
-        
-        /* شريط التحكم السفلي */
-        .control-bar {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 16px;
-            border-radius: 30px;
-            display: flex;
-            gap: 20px;
-            z-index: 1000;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            backdrop-filter: blur(10px);
-        }
-        
-        .control-btn {
-            background: none;
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 20px;
-            color: #4f46e5;
-            position: relative;
-        }
-        
-        .control-btn:hover {
-            background: #4f46e5;
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(79, 70, 229, 0.3);
-        }
-        
-        .control-btn.active {
-            background: #4f46e5;
-            color: white;
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
-        }
-        
-        .control-btn .badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #ef4444;
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            min-width: 18px;
-            text-align: center;
-        }
-        
-        /* لوحات التحكم المنبثقة */
-        .control-panel {
-            position: absolute;
-            bottom: 75px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.98);
-            padding: 18px;
-            border-radius: 16px;
-            z-index: 999;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-            min-width: 280px;
-            max-width: 90vw;
-            border: 1px solid rgba(226, 232, 240, 0.9);
-            backdrop-filter: blur(20px);
-            display: none;
-        }
-        
-        .control-panel.active {
-            display: block;
-            animation: slideUp 0.3s ease;
-        }
-        
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .panel-title {
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 16px;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .panel-close {
-            margin-left: auto;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #94a3b8;
-        }
-        
-        /* لوحة الطبقات */
-        .layer-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        
-        .layer-item:hover {
-            background: rgba(226, 232, 240, 0.5);
-        }
-        
-        .layer-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            border: 2px solid #cbd5e1;
-        }
-        
-        .layer-info {
-            flex: 1;
-        }
-        
-        .layer-name {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 14px;
-        }
-        
-        .layer-status {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 2px;
-        }
-        
-        .layer-toggle {
-            width: 48px;
-            height: 24px;
-            background: #cbd5e1;
-            border-radius: 12px;
-            position: relative;
-            transition: all 0.3s;
-        }
-        
-        .layer-toggle.active {
-            background: #4f46e5;
-        }
-        
-        .layer-toggle::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: all 0.3s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .layer-toggle.active::after {
-            left: 26px;
-        }
-        
-        /* لوحة البحث */
-        .search-container {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-        
-        #searchInput {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 14px;
-            outline: none;
-            transition: all 0.3s;
-            background: #f8fafc;
-        }
-        
-        #searchInput:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-        
-        #searchBtn {
-            padding: 0 20px;
-            background: #4f46e5;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        
-        #searchBtn:hover {
-            background: #4338ca;
-            transform: translateY(-1px);
-        }
-        
-        .search-results {
-            max-height: 200px;
-            overflow-y: auto;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .search-result {
-            padding: 12px 16px;
-            border-bottom: 1px solid #e2e8f0;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .search-result:hover {
-            background: #f1f5f9;
-        }
-        
-        .search-result:last-child {
-            border-bottom: none;
-        }
-        
-        .result-name {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 14px;
-        }
-        
-        .result-type {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 4px;
-        }
-        
-        /* المفتاح (Legend) */
-        .legend {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 16px;
-            border-radius: 16px;
-            z-index: 1000;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            min-width: 180px;
-            max-width: 85vw;
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            backdrop-filter: blur(10px);
-        }
-        
-        .legend-title {
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 12px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,0.2);
-            flex-shrink: 0;
-        }
-        
-        .legend-label {
-            font-size: 13px;
-            color: #475569;
-            flex: 1;
-        }
-        
-        .legend-contact {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 12px;
-            color: #64748b;
-        }
-        
-        /* الإحداثيات */
-        .coordinates {
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 1000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            backdrop-filter: blur(10px);
-            font-family: 'Courier New', monospace;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .coordinates:hover {
-            background: #4f46e5;
-            color: white;
-        }
-        
-        /* Popup محسّن */
-        .ol-popup {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.98);
-            padding: 0;
-            border-radius: 16px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
-            min-width: 250px;
-            max-width: 90vw;
-            z-index: 2000;
-            border: 1px solid rgba(226, 232, 240, 0.9);
-            backdrop-filter: blur(20px);
-            overflow: hidden;
-        }
-        
-        .popup-header {
-            padding: 18px 20px;
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .popup-title {
-            font-weight: 700;
-            font-size: 16px;
-        }
-        
-        .popup-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-        }
-        
-        .popup-content {
-            padding: 20px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-        
-        .popup-details {
-            display: grid;
-            gap: 12px;
-        }
-        
-        .detail-item {
-            display: flex;
-            justify-content: space-between;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .detail-item:last-child {
-            border-bottom: none;
-        }
-        
-        .detail-label {
-            color: #64748b;
-            font-size: 13px;
-        }
-        
-        .detail-value {
-            color: #1e293b;
-            font-weight: 600;
-            font-size: 13px;
-        }
-        
-        .popup-actions {
-            display: grid;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .action-btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-        
-        .action-btn.whatsapp {
-            background: #25D366;
-            color: white;
-        }
-        
-        .action-btn.whatsapp:hover {
-            background: #128C7E;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);
-        }
-        
-        .action-btn.download {
-            background: #4f46e5;
-            color: white;
-        }
-        
-        .action-btn.download:hover {
-            background: #4338ca;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
-        }
-        
-        .action-btn.request {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            color: white;
-        }
-        
-        .action-btn.request:hover {
-            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
-        }
-        
-        /* تحسينات للهواتف */
-        @media (max-width: 768px) {
-            #header {
-                padding: 12px;
-                font-size: 14px;
-            }
-            
-            .header-icon {
-                font-size: 18px;
-            }
-            
-            .control-bar {
-                bottom: 10px;
-                padding: 8px 14px;
-                gap: 15px;
-            }
-            
-            .control-btn {
-                width: 40px;
-                height: 40px;
-                font-size: 18px;
-            }
-            
-            .control-panel {
-                bottom: 65px;
-                right: 10px;
-                left: 10px;
-                max-width: calc(100vw - 20px);
-            }
-            
-            .legend {
-                top: 60px;
-                right: 10px;
-                left: 10px;
-                max-width: calc(100vw - 20px);
-                padding: 14px;
-            }
-            
-            .coordinates {
-                bottom: 65px;
-                left: 10px;
-                right: 10px;
-                text-align: center;
-                max-width: calc(100vw - 20px);
-            }
-            
-            .watermark {
-                font-size: 24px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            #header {
-                padding: 10px;
-                font-size: 13px;
-            }
-            
-            .control-bar {
-                gap: 12px;
-                padding: 6px 12px;
-            }
-            
-            .control-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 16px;
-            }
-            
-            .control-panel {
-                padding: 14px;
-            }
-            
-            .legend {
-                padding: 12px;
-            }
-        }
-        
-        /* تحسينات للشاشات الطويلة */
-        @media (max-height: 700px) {
-            .control-bar {
-                bottom: 8px;
-            }
-            
-            .control-panel {
-                bottom: 60px;
-            }
-            
-            .legend {
-                top: 50px;
-            }
-            
-            .coordinates {
-                bottom: 60px;
-            }
-        }
-        
-        /* شاشات كبيرة */
-        @media (min-width: 1200px) {
-            .control-bar {
-                gap: 25px;
-                padding: 12px 24px;
-            }
-            
-            .control-btn {
-                width: 48px;
-                height: 48px;
-                font-size: 22px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CartoMaroc Provinces</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+
+<style>
+html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family: Arial, sans-serif;}
+#app {height:100vh; display:flex; flex-direction:column;}
+#header {flex-shrink:0; background: linear-gradient(135deg, #E49112 0%, #1B5B9A 100%); color:white; text-align:center; padding:12px 10px; font-size:clamp(14px,4vw,22px); font-weight:bold; box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+#content {position:relative; flex:1; overflow:hidden;}
+#map {position:absolute; inset:0; width:100%; height:100%;}
+
+#watermark {position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:clamp(18px,5vw,32px); font-weight:bold; color:rgba(102,126,234,0.15); pointer-events:none; z-index:1500; white-space:nowrap; text-shadow:2px 2px 4px rgba(255,255,255,0.3);}
+
+.ol-popup {background:linear-gradient(135deg, #ffffff 0%, #f5f7fb 100%); padding:14px 16px; border:1px solid #e0e4ef; min-width:200px; max-width:90vw; z-index:9999; font-size:13px; border-radius:10px; box-shadow:0 10px 25px rgba(15,23,42,0.18); color:#1f2933;}
+.ol-popup b {font-size:14px; color:#111827;}
+.ol-popup a, .ol-popup button {display:inline-block; margin-top:6px; padding:6px 10px; background:#dc2626; color:#fff; border:none; border-radius:6px; text-decoration:none; font-size:12px; cursor:pointer; margin-right:5px;}
+.ol-popup a:hover, .ol-popup button:hover {background:#b91c1c;}
+.ol-popup .request-btn {background:#9333ea;}
+.ol-popup .request-btn:hover {background:#7e22ce;}
+.ol-popup .download-btn {background:#4CAF50;}
+.ol-popup .download-btn:hover {background:#388E3C;}
+
+#legend {position:absolute; top:400px; right:10px; background:rgba(255,255,255,0.96); padding:10px 12px; border-radius:10px; box-shadow:0 4px 12px rgba(15,23,42,0.25); z-index:3000; font-size:11px; min-width:135px; max-width:45vw; border:1px solid rgba(148,163,184,0.7); backdrop-filter:blur(4px);}
+.legend-item {display:flex; align-items:center; gap:6px; margin-bottom:6px;}
+.legend-item:last-child {margin-bottom:0;}
+.legend-color {width:16px; height:16px; border:1px solid #000; flex-shrink:0;}
+
+/* بحث OSM مفتوح دائمًا مع إغلاق */
+#searchContainer {
+  position:absolute;
+  top:10px; right:10px;
+  z-index:2000;
+  display:flex;
+  flex-direction:column;
+}
+#searchBoxOSM {
+  width:220px;
+  padding:6px 10px;
+  font-size:13px;
+  border-radius:20px;
+  border:1px solid #ccc;
+  outline:none;
+}
+#searchBoxOSM:focus {border-color:#2563eb;}
+#closeSearch {
+  position:absolute;
+  top:6px; right:5px;
+  font-size:12px;
+  cursor:pointer;
+  color:#555;
+  user-select:none;
+}
+#showSearchSmall {
+  display:none;
+  position:absolute;
+  top:10px; right:10px;
+  z-index:2000;
+  font-size:16px;
+  cursor:pointer;
+  background:#2563eb;
+  color:#fff;
+  border-radius:50%;
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+}
+#suggestions {
+  margin-top:2px;
+  width:220px;
+  max-height:150px;
+  overflow-y:auto;
+  padding:0;
+  list-style:none;
+  border:1px solid #ccc;
+  background:#fff;
+  border-radius:6px;
+  display:block;
+  font-size:13px;
+}
+#suggestions li {padding:6px 10px; cursor:pointer;}
+#suggestions li:hover {background:#f0f0f0;}
+@media (max-width:768px){
+  #searchBoxOSM, #suggestions {width:160px;}
+}
+</style>
 </head>
 <body>
-    <div id="app">
-        <!-- الهيدر -->
-        <header id="header">
-            <div class="header-icon">🗺️</div>
-            <div class="header-title">CartoMaroc - خرائط استخدام الأراضي 30م (1985-2022)</div>
-            <div class="header-icon">🇲🇦</div>
-        </header>
-        
-        <!-- منطقة المحتوى -->
-        <main id="content">
-            <!-- الخريطة -->
-            <div id="map"></div>
-            
-            <!-- علامة مائية -->
-            <div class="watermark">@CartoMaroc</div>
-            
-            <!-- المفتاح (Legend) -->
-            <div class="legend">
-                <div class="legend-title">📊 المفتاح</div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: rgba(76, 175, 80, 0.7);"></div>
-                    <div class="legend-label">مجاني للتحميل</div>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: rgba(244, 67, 54, 0.7);"></div>
-                    <div class="legend-label">مدفوع (100 درهم)</div>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: rgba(162, 112, 163, 0.3);"></div>
-                    <div class="legend-label">غير متوفر بعد</div>
-                </div>
-                <div class="legend-contact">
-                    📧 البريد: contact@cartomaroc.com<br>
-                    📞 الهاتف: +212 633 57 79 88
-                </div>
-            </div>
-            
-            <!-- الإحداثيات -->
-            <div class="coordinates" id="coords">X: 0.00, Y: 0.00</div>
-            
-            <!-- Popup -->
-            <div id="popup" class="ol-popup" style="display: none;"></div>
-            
-            <!-- لوحة الطبقات -->
-            <div id="layerPanel" class="control-panel">
-                <div class="panel-title">
-                    <span>🗂️ التحكم في الطبقات</span>
-                    <button class="panel-close" onclick="togglePanel('layerPanel')">✕</button>
-                </div>
-                <div class="layer-item">
-                    <div class="layer-color" style="background: rgba(76, 175, 80, 0.7);"></div>
-                    <div class="layer-info">
-                        <div class="layer-name">المناطق المجانية</div>
-                        <div class="layer-status">10 مناطق متاحة للتحميل</div>
-                    </div>
-                    <div class="layer-toggle active" id="freeToggle"></div>
-                </div>
-                <div class="layer-item">
-                    <div class="layer-color" style="background: rgba(244, 67, 54, 0.7);"></div>
-                    <div class="layer-info">
-                        <div class="layer-name">المناطق المدفوعة</div>
-                        <div class="layer-status">8 مناطق (100 درهم لكل منطقة)</div>
-                    </div>
-                    <div class="layer-toggle active" id="paidToggle"></div>
-                </div>
-                <div class="layer-item">
-                    <div class="layer-color" style="background: rgba(162, 112, 163, 0.3);"></div>
-                    <div class="layer-info">
-                        <div class="layer-name">المناطق غير المتوفرة</div>
-                        <div class="layer-status">54 منطقة قيد الإعداد</div>
-                    </div>
-                    <div class="layer-toggle active" id="unavailableToggle"></div>
-                </div>
-            </div>
-            
-            <!-- لوحة البحث -->
-            <div id="searchPanel" class="control-panel">
-                <div class="panel-title">
-                    <span>🔍 البحث عن منطقة</span>
-                    <button class="panel-close" onclick="togglePanel('searchPanel')">✕</button>
-                </div>
-                <div class="search-container">
-                    <input type="text" id="searchInput" placeholder="اكتب اسم المنطقة...">
-                    <button id="searchBtn">بحث</button>
-                </div>
-                <div class="search-results" id="searchResults">
-                    <!-- النتائج ستظهر هنا -->
-                </div>
-            </div>
-            
-            <!-- شريط التحكم السفلي -->
-            <div class="control-bar">
-                <button class="control-btn" id="layersBtn" onclick="togglePanel('layerPanel')" title="الطبقات">
-                    🗂️
-                </button>
-                <button class="control-btn" id="searchBtnBar" onclick="togglePanel('searchPanel')" title="بحث">
-                    🔍
-                </button>
-                <button class="control-btn" id="homeBtn" onclick="goHome()" title="العرض الكامل">
-                    🏠
-                </button>
-                <button class="control-btn" id="infoBtn" onclick="showInfo()" title="معلومات">
-                    ℹ️
-                </button>
-                <button class="control-btn" id="shareBtn" onclick="shareMap()" title="مشاركة">
-                    📤
-                </button>
-            </div>
-        </main>
-    </div>
 
-    <script>
-        // البيانات
-        const freeProvinces = ["Fahs-Anjra", "Deriouch", "Moulay Yacoub", "Mediouna", "Fkih Ben Saleh",
-                              "Youssoufia", "Inezgane-Ait Melloul", "Tinghir", "Sidi Ifni", "Tarfaya"];
-        
-        const paidProvinces = ["Marrakech", "Tanger-Asilah", "Skhirate-Temara", "Taza", "Settat", 
-                              "Guercif", "M'Diq-Fnideq", "Khouribga"];
-        
-        const downloadLinks = {
-            "Fahs-Anjra": "https://drive.google.com/file/d/1TQwmAVrqxXv3qhBsy3F9gMVfUu7DgBpV/view",
-            "Deriouch": "https://drive.google.com/file/d/1UKlqGjBq-TQIRH5lCd4z7a1R50LB1Kv3/view",
-            "Moulay Yacoub": "https://drive.google.com/file/d/1lWhSs81RbphgBGuMYLnaSYDjyz3zcyOD/view",
-            "Mediouna": "https://drive.google.com/file/d/1kxzfQFl45W1XZHv7hlU02Z8RJ6xssIru/view",
-            "Fkih Ben Saleh": "https://drive.google.com/file/d/1ib2b_JAimjRBMwEkAeFIPDx8MlBKWdM2/view",
-            "Youssoufia": "https://drive.google.com/file/d/1GIxxaukuPllYrLC1vCWvd0ROOFfqJj0O/view",
-            "Sidi Ifni": "https://drive.google.com/file/d/1dQGv2TmGDEhjWEtd2ZSZRI0NEu2M5Fen/view",
-            "Inezgane-Ait Melloul": "https://drive.google.com/file/d/1dQGv2TmGDEhjWEtd2ZSZRI0NEu2M5Fen/view",
-            "Tinghir": "https://drive.google.com/file/d/1S7GaO7M5b8IW-Ic-vbd23LlBQX0KB0c6/view",
-            "Tarfaya": "https://drive.google.com/file/d/1lrFzY5ECe_QD9U2NRAA_be1Lan-_1SLY/view",
-            
-            "Marrakech": "https://drive.google.com/file/d/1DBtwIGzWY2sPVm2ZAli-kBWerNMstOPw/view",
-            "Tanger-Asilah": "https://drive.google.com/file/d/1lnBOG5wqUAeG1EfuQNlenp6jHK1Pe4g_/view",
-            "Skhirate-Temara": "https://drive.google.com/file/d/1Km67Ez0yEoy2zg1GKXGrjRmyRdoMKaZM/view",
-            "Taza": "https://drive.google.com/file/d/1Sqezr8c8T4meyqoVPu_8GGO8rrGDEXh7/view",
-            "Settat": "https://drive.google.com/file/d/16h3BlDQUkfQ_jgNP7WOTkTxINR6gmKfR/view",
-            "Guercif": "https://drive.google.com/file/d/1QIfHoO7tpyIo5pKD50aZ99ncnP5ekC96/view",
-            "M'Diq-Fnideq": "https://drive.google.com/file/d/18kszElc4NdTj_jcq2qCTM6waWPp0OQ6Y/view",
-            "Khouribga": "https://drive.google.com/file/d/1q57MSTwnReWED1hrvZVbUT2NoXFd5zXy/view"
-        };
-        
-        let map, popup, popupElement;
-        let selectedFeature = null;
-        
-        document.addEventListener("DOMContentLoaded", function() {
-            // إعداد الخريطة
-            const geojsonSource = new ol.source.Vector({
-                url: "https://raw.githubusercontent.com/Ayoub-WebGis9/CartoMaroc/main/PROVINCE.geojson",
-                format: new ol.format.GeoJSON()
-            });
-            
-            // دالة للحصول على اسم المنطقة
-            function getProvinceName(feature) {
-                const props = feature.getProperties();
-                const possible = ["NOM-PROV", "NOM_PROV", "name", "NAME", "nom", "Nom", "الاقليم", "الإقليم"];
-                for (let f of possible) {
-                    if (props[f]) return props[f];
-                }
-                return "منطقة غير معروفة";
-            }
-            
-            // إنشاء طبقة المناطق مع التنسيق
-            const provincesLayer = new ol.layer.Vector({
-                source: geojsonSource,
-                style: function(feature) {
-                    const name = getProvinceName(feature);
-                    let fillColor = "rgba(162, 112, 163, 0.3)";
-                    
-                    if (freeProvinces.includes(name)) {
-                        fillColor = "rgba(76, 175, 80, 0.7)";
-                    } else if (paidProvinces.includes(name)) {
-                        fillColor = "rgba(244, 67, 54, 0.7)";
-                    }
-                    
-                    return new ol.style.Style({
-                        stroke: new ol.style.Stroke({
-                            color: selectedFeature === feature ? "#ffaa00" : "#000000",
-                            width: selectedFeature === feature ? 3 : 1.3
-                        }),
-                        fill: new ol.style.Fill({
-                            color: fillColor
-                        }),
-                        text: new ol.style.Text({
-                            text: name.length > 15 ? name.substring(0, 15) + "..." : name,
-                            font: selectedFeature === feature ? "bold 13px Arial" : "bold 11px Arial",
-                            fill: new ol.style.Fill({
-                                color: selectedFeature === feature ? "#ffaa00" : "#000000"
-                            }),
-                            stroke: new ol.style.Stroke({
-                                color: "#ffffff",
-                                width: 3
-                            }),
-                            backgroundFill: new ol.style.Fill({
-                                color: "rgba(255, 255, 255, 0.7)"
-                            }),
-                            padding: [3, 5, 3, 5],
-                            offsetY: -12
-                        })
-                    });
-                }
-            });
-            
-            // إنشاء الخريطة
-            map = new ol.Map({
-                target: "map",
-                layers: [
-                    new ol.layer.Tile({
-                        source: new ol.source.XYZ({
-                            url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                            maxZoom: 20
-                        })
-                    }),
-                    provincesLayer
-                ],
-                view: new ol.View({
-                    center: ol.proj.fromLonLat([-7.5898, 33.5731]),
-                    zoom: 7,
-                    minZoom: 5,
-                    maxZoom: 18
-                })
-            });
-            
-            // إعداد popup
-            popupElement = document.getElementById("popup");
-            popup = new ol.Overlay({
-                element: popupElement,
-                positioning: "bottom-center",
-                offset: [0, -15],
-                stopEvent: true
-            });
-            map.addOverlay(popup);
-            
-            // وظائف WhatsApp
-            window.requestProvince = function(provinceName) {
-                const message = `مرحبا CartoMaroc، أريد بيانات استخدام الأراضي GLC لمنطقة ${provinceName}`;
-                const whatsappURL = `https://wa.me/212633577988?text=${encodeURIComponent(message)}`;
-                window.open(whatsappURL, "_blank");
-            };
-            
-            // وظيفة تحميل البيانات المجانية
-            window.downloadFreeData = function(provinceName) {
-                const link = downloadLinks[provinceName];
-                if (link) {
-                    window.open(link, "_blank");
-                }
-            };
-            
-            // عرض معلومات المنطقة في popup
-            function showProvinceInfo(feature, coord) {
-                const name = getProvinceName(feature);
-                
-                // إعداد محتوى popup
-                let status = "غير متوفر بعد";
-                let statusClass = "unavailable";
-                let actions = "";
-                
-                if (freeProvinces.includes(name)) {
-                    status = "مجاني للتحميل";
-                    statusClass = "free";
-                    actions = `
-                        <button class="action-btn download" onclick="downloadFreeData('${name}')">
-                            📥 تحميل مجاني
-                        </button>
-                    `;
-                } else if (paidProvinces.includes(name)) {
-                    status = "مدفوع (100 درهم)";
-                    statusClass = "paid";
-                    actions = `
-                        <button class="action-btn whatsapp" onclick="requestProvince('${name}')">
-                            📱 طلب عبر واتساب
-                        </button>
-                        <button class="action-btn download" onclick="window.open('${downloadLinks[name]}', '_blank')">
-                            📥 معاينة البيانات
-                        </button>
-                    `;
-                } else {
-                    actions = `
-                        <button class="action-btn request" onclick="requestProvince('${name}')">
-                            📱 طلب البيانات
-                        </button>
-                    `;
-                }
-                
-                popupElement.innerHTML = `
-                    <div class="popup-header">
-                        <div class="popup-title">${name}</div>
-                        <button class="popup-close" onclick="closePopup()">✕</button>
-                    </div>
-                    <div class="popup-content">
-                        <div class="popup-details">
-                            <div class="detail-item">
-                                <span class="detail-label">النوع:</span>
-                                <span class="detail-value">منطقة إدارية</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">الحالة:</span>
-                                <span class="detail-value" style="color: ${
-                                    statusClass === 'free' ? '#4CAF50' : 
-                                    statusClass === 'paid' ? '#F44336' : '#A270A3'
-                                }; font-weight: 700;">
-                                    ${status}
-                                </span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">السنة:</span>
-                                <span class="detail-value">1985-2000-2010-2022</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">الدقة:</span>
-                                <span class="detail-value">30 متر</span>
-                            </div>
-                        </div>
-                        <div class="popup-actions">
-                            ${actions}
-                        </div>
-                    </div>
-                `;
-                
-                popupElement.style.display = "block";
-                popup.setPosition(coord);
-            }
-            
-            // إغلاق popup
-            window.closePopup = function() {
-                popupElement.style.display = "none";
-                selectedFeature = null;
-                provincesLayer.changed();
-            };
-            
-            // أحداث الخريطة
-            map.on("click", function(evt) {
-                const feature = map.forEachFeatureAtPixel(evt.pixel, ft => ft);
-                
-                // إغلاق اللوحات المنبثقة
-                document.querySelectorAll(".control-panel").forEach(panel => {
-                    panel.classList.remove("active");
-                });
-                
-                if (feature) {
-                    selectedFeature = feature;
-                    provincesLayer.changed();
-                    showProvinceInfo(feature, evt.coordinate);
-                    
-                    // تكبير الخريطة على المنطقة المحددة
-                    map.getView().fit(feature.getGeometry().getExtent(), {
-                        duration: 1000,
-                        padding: [50, 50, 50, 50],
-                        maxZoom: 12
-                    });
-                } else {
-                    closePopup();
-                }
-            });
-            
-            // تحديث الإحداثيات
-            const coordsElement = document.getElementById("coords");
-            map.on("pointermove", function(evt) {
-                const coord = ol.proj.toLonLat(evt.coordinate);
-                coordsElement.textContent = `X: ${coord[0].toFixed(2)}, Y: ${coord[1].toFixed(2)}`;
-                
-                // تغيير شكل المؤشر عند التمرير فوق منطقة
-                const feature = map.forEachFeatureAtPixel(evt.pixel, ft => ft);
-                map.getTargetElement().style.cursor = feature ? "pointer" : "";
-            });
-            
-            // نسخ الإحداثيات
-            coordsElement.addEventListener("click", function() {
-                const coordsText = coordsElement.textContent;
-                navigator.clipboard.writeText(coordsText).then(() => {
-                    const original = coordsElement.textContent;
-                    coordsElement.textContent = "تم النسخ!";
-                    setTimeout(() => coordsElement.textContent = original, 1500);
-                });
-            });
-            
-            // البحث
-            const searchInput = document.getElementById("searchInput");
-            const searchBtn = document.getElementById("searchBtn");
-            const searchResults = document.getElementById("searchResults");
-            
-            function performSearch() {
-                const searchTerm = searchInput.value.trim().toLowerCase();
-                if (!searchTerm) return;
-                
-                searchResults.innerHTML = "";
-                let foundCount = 0;
-                
-                geojsonSource.getFeatures().forEach(feature => {
-                    const name = getProvinceName(feature).toLowerCase();
-                    
-                    if (name.includes(searchTerm)) {
-                        foundCount++;
-                        const resultDiv = document.createElement("div");
-                        resultDiv.className = "search-result";
-                        resultDiv.innerHTML = `
-                            <div class="result-name">${getProvinceName(feature)}</div>
-                            <div class="result-type">
-                                ${freeProvinces.includes(getProvinceName(feature)) ? "مجاني" : 
-                                  paidProvinces.includes(getProvinceName(feature)) ? "مدفوع" : "غير متوفر"}
-                            </div>
-                        `;
-                        
-                        resultDiv.addEventListener("click", function() {
-                            selectedFeature = feature;
-                            provincesLayer.changed();
-                            showProvinceInfo(feature, ol.extent.getCenter(feature.getGeometry().getExtent()));
-                            map.getView().fit(feature.getGeometry().getExtent(), {
-                                duration: 1000,
-                                padding: [50, 50, 50, 50],
-                                maxZoom: 12
-                            });
-                            togglePanel("searchPanel");
-                        });
-                        
-                        searchResults.appendChild(resultDiv);
-                    }
-                });
-                
-                if (foundCount === 0) {
-                    searchResults.innerHTML = `<div style="padding: 20px; text-align: center; color: #64748b;">لم يتم العثور على نتائج</div>`;
-                }
-            }
-            
-            searchBtn.addEventListener("click", performSearch);
-            searchInput.addEventListener("keypress", function(e) {
-                if (e.key === "Enter") performSearch();
-            });
-            
-            // تحميل جميع المناطق لعرضها في البحث
-            geojsonSource.once("featuresloadend", function() {
-                const allFeatures = geojsonSource.getFeatures();
-                const allNames = allFeatures.map(f => getProvinceName(f));
-                const totalCount = allNames.length;
-                
-                // تحديث العدادات في لوحة الطبقات
-                document.querySelector("#freeToggle + .layer-info .layer-status").textContent = 
-                    `${freeProvinces.length} مناطق متاحة للتحميل`;
-                document.querySelector("#paidToggle + .layer-info .layer-status").textContent = 
-                    `${paidProvinces.length} مناطق (100 درهم لكل منطقة)`;
-                document.querySelector("#unavailableToggle + .layer-info .layer-status").textContent = 
-                    `${totalCount - freeProvinces.length - paidProvinces.length} منطقة قيد الإعداد`;
-            });
+<div id="app">
+<header id="header">
+CadGIS | Titres fonciers | Bornes  | Zonage | Limites ADM
+</header>
+
+<main id="content">
+<div id="map">
+<div id="watermark">@CartoMaroc</div>
+</div>
+
+<!-- مربع البحث الكامل -->
+<div id="searchContainer">
+  <input type="text" id="searchBoxOSM" placeholder="🔍 Rechercher...">
+  <span id="closeSearch">🗙</span>
+  <ul id="suggestions"></ul>
+</div>
+
+<!-- أيقونة لإعادة فتح البحث -->
+<div id="showSearchSmall">🔍</div>
+
+<div id="popup" class="ol-popup"></div>
+
+<div id="legend">
+<div class="legend-item">
+<div class="legend-color" style="background:rgba(76, 175, 80, 0.7);"></div>
+<span>Provinces</span>
+</div>
+<div style="margin-top: 8px; font-size: 10px;">
+<span>Email: contact@cartomaroc.com</span>
+</div>
+</div>
+</main>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+const geojsonSource = new ol.source.Vector({
+  url:"https://raw.githubusercontent.com/Ayoub-WebGis9/CartoMaroc/main/PROVINCE.geojson",
+  format: new ol.format.GeoJSON()
+});
+
+function getProvinceName(feature){
+  const props = feature.getProperties();
+  const possible=["NOM-PROV","NOM_PROV","name","NAME","nom","Nom","الاقليم","الإقليم"];
+  for(let f of possible) if(props[f]) return props[f];
+  return "Sans nom";
+}
+
+const geojsonLayer = new ol.layer.Vector({
+  source:geojsonSource,
+  style:function(feature){
+    const fillColor="rgba(76, 175, 80, 0.7)";
+    return new ol.style.Style({
+      stroke:new ol.style.Stroke({color:"black", width:1.3}),
+      fill:new ol.style.Fill({color:fillColor}),
+      text:new ol.style.Text({
+        text:getProvinceName(feature),
+        font:"bold 12px Arial",
+        fill:new ol.style.Fill({color:"#000"}),
+        stroke:new ol.style.Stroke({color:"#fff", width:2})
+      })
+    });
+  }
+});
+
+const map=new ol.Map({
+  target:"map",
+  layers:[
+    new ol.layer.Tile({source:new ol.source.OSM()}),
+    geojsonLayer
+  ],
+  view:new ol.View({
+    center:ol.proj.fromLonLat([-7.9,31.6]),
+    zoom:6
+  })
+});
+
+const popup=new ol.Overlay({
+  element:document.getElementById("popup"),
+  positioning:"bottom-center",
+  offset:[0,-15]
+});
+map.addOverlay(popup);
+
+const provinceDownloadLinks = {
+  "Fahs-Anjra":"https://cartomaroc.com/data/Fahs-Anjra.zip",
+  "Deriouch":"https://cartomaroc.com/data/Deriouch.zip",
+  "Moulay Yacoub":"https://cartomaroc.com/data/Moulay-Yacoub.zip",
+  "Mediouna":"https://cartomaroc.com/data/Mediouna.zip",
+  "Fkih Ben Saleh":"https://cartomaroc.com/data/Fkih-Ben-Saleh.zip",
+  "Youssoufia":"https://cartomaroc.com/data/Youssoufia.zip",
+  "Inezgane-Ait Melloul":"https://cartomaroc.com/data/Inezgane-Ait-Melloul.zip",
+  "Tinghir":"https://cartomaroc.com/data/Tinghir.zip",
+  "Sidi Ifni":"https://cartomaroc.com/data/Sidi-Ifni.zip",
+  "Tarfaya":"https://cartomaroc.com/data/Tarfaya.zip",
+  "Marrakech":"https://cartomaroc.com/data/Marrakech.zip",
+  "Tanger-Asilah":"https://cartomaroc.com/data/Tanger-Asilah.zip",
+  "Skhirate-Temara":"https://cartomaroc.com/data/Skhirate-Temara.zip",
+  "Taza":"https://cartomaroc.com/data/Taza.zip",
+  "Settat":"https://cartomaroc.com/data/Settat.zip",
+  "Guercif":"https://cartomaroc.com/data/Guercif.zip",
+  "M'Diq-Fnideq":"https://cartomaroc.com/data/MDiq-Fnideq.zip",
+  "Khouribga":"https://cartomaroc.com/data/Khouribga.zip"
+};
+
+window.downloadProvinceData=function(provinceName){
+  const link=provinceDownloadLinks[provinceName];
+  if(link) window.open(link,"_blank");
+  else alert("⚠️ رابط التحميل غير متوفر لهذا الإقليم");
+};
+
+window.contactWhatsApp=function(provinceName){
+  const frenchMessage=`Bonjour, je souhaite recevoir la base de données complète des Titres, Bornes et Limites pour (*${provinceName}*). Merci !`;
+  const arabicMessage=`\nمرحبًا، أود الحصول على قاعدة المعطيات الكاملة الخاصة بـ:\n(*${provinceName}*)`;
+  const message=frenchMessage+arabicMessage;
+  const whatsappURL=`https://wa.me/212668090285?text=${encodeURIComponent(message)}`;
+  window.open(whatsappURL,"_blank");
+};
+
+function showPopup(feature,coord){
+  const name=getProvinceName(feature);
+  let html=`<b>${name}</b><br>ℹ️ Données disponibles sur demande<br>`;
+  html+=`<button class="request-btn" onclick="downloadProvinceData('${name}')">📱 Demander ces données</button><br>`;
+  html+=`<button class="download-btn" onclick="contactWhatsApp('${name}')">📞 Contacter via WhatsApp</button>`;
+  popup.getElement().innerHTML=html;
+  popup.setPosition(coord);
+}
+
+map.on("click",(evt)=>{
+  const f=map.forEachFeatureAtPixel(evt.pixel,ft=>ft);
+  if(f) showPopup(f,evt.coordinate);
+  else popup.setPosition(undefined);
+});
+
+/* البحث OSM المفتوح مع اقتراحات */
+const searchBox=document.getElementById("searchBoxOSM");
+const suggestions=document.getElementById("suggestions");
+const closeSearch=document.getElementById("closeSearch");
+const showSearchSmall=document.getElementById("showSearchSmall");
+
+searchBox.addEventListener("input",function(){
+  const query=this.value.trim();
+  if(!query){ suggestions.style.display="none"; return; }
+
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query+', Maroc')}&limit=5`)
+    .then(res=>res.json())
+    .then(data=>{
+      suggestions.innerHTML="";
+      if(data.length>0){
+        data.forEach(item=>{
+          const li=document.createElement("li");
+          li.textContent=item.display_name;
+          li.addEventListener("click",()=>{
+            const lon=parseFloat(item.lon);
+            const lat=parseFloat(item.lat);
+            map.getView().animate({center:ol.proj.fromLonLat([lon,lat]), zoom:12, duration:1000});
+            suggestions.style.display="none";
+            searchBox.value=item.display_name;
+          });
+          suggestions.appendChild(li);
         });
-        
-        // وظائف التحكم العامة
-        function togglePanel(panelId) {
-            const panel = document.getElementById(panelId);
-            const isActive = panel.classList.contains("active");
-            
-            // إغلاق جميع اللوحات أولاً
-            document.querySelectorAll(".control-panel").forEach(p => {
-                p.classList.remove("active");
-            });
-            
-            // فتح/إغلاق اللوحة المطلوبة
-            if (!isActive) {
-                panel.classList.add("active");
-            }
-            
-            // إغلاق popup إذا كان مفتوحاً
-            const popup = document.getElementById("popup");
-            if (popup.style.display === "block") {
-                closePopup();
-            }
-        }
-        
-        function goHome() {
-            if (map) {
-                map.getView().animate({
-                    center: ol.proj.fromLonLat([-7.5898, 33.5731]),
-                    zoom: 7,
-                    duration: 1000
-                });
-                closePopup();
-            }
-            
-            // إغلاق جميع اللوحات
-            document.querySelectorAll(".control-panel").forEach(panel => {
-                panel.classList.remove("active");
-            });
-        }
-        
-        function showInfo() {
-            alert("CartoMaroc - نظام خرائط استخدام الأراضي\n\n" +
-                  "📅 السنوات المتاحة: 1985، 2000، 2010، 2022\n" +
-                  "📍 الدقة: 30 متر\n" +
-                  "🌍 تغطية: جميع مناطق المغرب\n" +
-                  "📧 للتواصل: contact@cartomaroc.com\n" +
-                  "📞 الهاتف: +212 633 57 79 88");
-        }
-        
-        function shareMap() {
-            if (navigator.share) {
-                navigator.share({
-                    title: 'CartoMaroc - خرائط استخدام الأراضي',
-                    text: 'اكتشف خرائط استخدام الأراضي للمغرب بدقة 30م (1985-2022)',
-                    url: window.location.href,
-                });
-            } else {
-                // نسخ الرابط
-                navigator.clipboard.writeText(window.location.href).then(() => {
-                    alert("تم نسخ رابط الخريطة إلى الحافظة");
-                });
-            }
-        }
-        
-        // إغلاق اللوحات عند النقر خارجها
-        document.addEventListener("click", function(event) {
-            if (!event.target.closest(".control-panel") && 
-                !event.target.closest(".control-btn") && 
-                !event.target.closest(".ol-popup")) {
-                document.querySelectorAll(".control-panel").forEach(panel => {
-                    panel.classList.remove("active");
-                });
-            }
-        });
-    </script>
+        suggestions.style.display="block";
+      } else suggestions.style.display="none";
+    }).catch(err=>console.error(err));
+});
+
+// إغلاق مربع البحث بالكامل وإظهار الأيقونة الصغيرة
+closeSearch.addEventListener("click",()=>{
+  document.getElementById("searchContainer").style.display="none";
+  showSearchSmall.style.display="flex";
+});
+
+// إعادة فتح البحث عند النقر على الأيقونة الصغيرة
+showSearchSmall.addEventListener("click",()=>{
+  document.getElementById("searchContainer").style.display="flex";
+  showSearchSmall.style.display="none";
+});
+
+document.addEventListener("click",function(e){
+  if(e.target!==searchBox) suggestions.style.display="none";
+});
+});
+</script>
+
 </body>
 </html>
