@@ -3,10 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <title>CadGIS + Tableau Provinces</title>
-
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css" />
 <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
-
 <style>
 html, body{
   margin:0; padding:0;
@@ -86,6 +84,19 @@ html, body{
   flex-direction:column;
   gap:6px;
 }
+#contactButtons a{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#111827;
+  color:#fff;
+  text-decoration:none;
+  font-size:16px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.18);
+}
 #contactButtons a:hover{opacity:0.85;}
 
 /* زر تبديل الخلفية */
@@ -163,15 +174,15 @@ html, body{
   left:10px;
   top:60px;
   z-index:2500;
-  /* 70% شفافية */
-  background:rgba(255,255,255,0.7);
+  background:rgba(255,255,255,0.9);
   padding:10px 12px;
   border-radius:8px;
   box-shadow:0 2px 8px rgba(0,0,0,0.18);
   max-height:70vh;
-  overflow:auto;
   font-size:12px;
   min-width:340px;
+  display:flex;
+  flex-direction:column;
 }
 #prov-container h2{
   margin:0 0 8px 0;
@@ -188,6 +199,15 @@ html, body{
   padding:3px 6px;
   font-size:12px;
 }
+
+/* حاوية التمرير العمودي للجدول */
+#prov-scroll-wrapper{
+  max-height:55vh;       /* ارتفاع الحاوية */
+  overflow-y:auto;       /* تمرير عمودي */
+  overflow-x:hidden;     /* منع تمرير أفقي */
+}
+
+/* جدول المحافظات */
 #prov-table{
   border-collapse:collapse;
   width:100%;
@@ -207,64 +227,76 @@ html, body{
   background:#fffbdd !important;
 }
 
-/* على الشاشات الصغيرة: إخفاء الجدول، تصغيره، وإظهار عمود 1 و4 فقط */
+/* على الشاشات الصغيرة: إبقاء الجدول لكن داخل حاوية سفلية مع تمرير عمودي */
 @media(max-width:768px){
   #prov-container{
-    display:none;
-    max-width:80vw;
-    width:80vw;
+    left:0;
+    right:0;
+    top:auto;
+    bottom:0;
+    margin:0 auto;
+    max-height:55vh;
+    width:96vw;
+    max-width:96vw;
     font-size:11px;
+    background:#f9fafb;
+    border-radius:14px 14px 0 0;
+    box-shadow:0 -4px 18px rgba(0,0,0,0.22);
+    border:1px solid #e5e7eb;
   }
   #toggleProv{
     display:block;
   }
+  #prov-scroll-wrapper{
+    max-height:45vh;
+  }
+}
 
-  /* إخفاء الأعمدة 2 (Région) و3 (Nom Arabe) في الرأس والبيانات */
-  #prov-table th:nth-child(2),
-  #prov-table td:nth-child(2),
-  #prov-table th:nth-child(3),
-  #prov-table td:nth-child(3){
-    display:none;
+/* تحسين تمرير كامل التطبيق على شاشات منخفضة الارتفاع */
+@media(max-height:550px){
+  #app{
+    height:auto;
+    min-height:100vh;
   }
 }
 </style>
 </head>
-
 <body>
 <div id="app">
-  <header id="header">
-    CadGIS | Titres fonciers | Bornes | Zonage | Limites ADM
-  </header>
+<header id="header">
+  CadGIS | Titres fonciers | Bornes | Zonage | Limites ADM
+</header>
 
-  <main id="content">
-    <div id="map"></div>
+<main id="content">
+  <div id="map"></div>
 
-    <!-- زر إظهار/إخفاء الجدول للموبايل -->
-    <button id="toggleProv">☰ Provinces</button>
+  <!-- زر إظهار/إخفاء الجدول للموبايل -->
+  <button id="toggleProv">☰ Provinces</button>
 
-    <!-- جدول الأقاليم مع فلاتر -->
-    <div id="prov-container">
-      <h2>Filtres Provinces</h2>
+  <!-- جدول الأقاليم مع فلاتر -->
+  <div id="prov-container">
+    <h2>Filtres Provinces</h2>
+    <div id="prov-filters">
+      <input type="text" id="filterProv" placeholder="🔍 Filtrer par Province">
+      <select id="filterRegion">
+        <option value="">Toutes les régions</option>
+        <option value="Casablanca-Settat">Casablanca-Settat</option>
+        <option value="Marrakech-Safi">Marrakech-Safi</option>
+        <option value="Rabat-Salé-Kénitra">Rabat-Salé-Kénitra</option>
+        <option value="Fès-Meknès">Fès-Meknès</option>
+        <option value="Souss-Massa">Souss-Massa</option>
+        <option value="Béni Mellal-Khénifra">Béni Mellal-Khénifra</option>
+        <option value="Oriental">Oriental</option>
+        <option value="Drâa-Tafilalet">Drâa-Tafilalet</option>
+        <option value="Guelmim-Oued Noun">Guelmim-Oued Noun</option>
+        <option value="Laâyoune-Sakia El Hamra">Laâyoune-Sakia El Hamra</option>
+        <option value="Dakhla-Oued Ed-Dahab">Dakhla-Oued Ed-Dahab</option>
+        <option value="Tanger-Tétouan-Al Hoceïma">Tanger-Tétouan-Al Hoceïma</option>
+      </select>
+    </div>
 
-      <div id="prov-filters">
-        <input type="text" id="filterProv" placeholder="🔍 Filtrer par Province">
-        <select id="filterRegion">
-          <option value="">Toutes les régions</option>
-          <option value="Casablanca-Settat">Casablanca-Settat</option>
-          <option value="Marrakech-Safi">Marrakech-Safi</option>
-          <option value="Rabat-Salé-Kénitra">Rabat-Salé-Kénitra</option>
-          <option value="Fès-Meknès">Fès-Meknès</option>
-          <option value="Souss-Massa">Souss-Massa</option>
-          <option value="Béni Mellal-Khénifra">Béni Mellal-Khénifra</option>
-          <option value="Oriental">Oriental</option>
-          <option value="Drâa-Tafilalet">Drâa-Tafilalet</option>
-          <option value="Guelmim-Oued Noun">Guelmim-Oued Noun</option>
-          <option value="Laâyoune-Sakia El Hamra">Laâyoune-Sakia El Hamra</option>
-          <option value="Dakhla-Oued Ed-Dahab">Dakhla-Oued Ed-Dahab</option>
-          <option value="Tanger-Tétouan-Al Hoceïma">Tanger-Tétouan-Al Hoceïma</option>
-        </select>
-      </div>
-
+    <!-- حاوية التمرير العمودي للجدول -->
+    <div id="prov-scroll-wrapper">
       <table id="prov-table">
         <thead>
           <tr>
@@ -279,29 +311,29 @@ html, body{
         </tbody>
       </table>
     </div>
+  </div>
 
-    <!-- أيقونات تواصل -->
-    <div id="contactButtons">
-      <a href="mailto:contact@cartomaroc.com" id="mailBtn" title="Email">✉</a>
-      <a href="https://wa.me/212668090285" target="_blank" id="waBtn" title="WhatsApp">🟩</a>
-    </div>
+  <!-- أيقونات تواصل -->
+  <div id="contactButtons">
+    <a href="mailto:contact@cartomaroc.com" id="mailBtn" title="Email">✉</a>
+    <a href="https://wa.me/212668090285" target="_blank" id="waBtn" title="WhatsApp">🟩</a>
+  </div>
 
-    <!-- زر تبديل الخلفية -->
-    <button id="basemapToggle">🗺️ OSM</button>
+  <!-- زر تبديل الخلفية -->
+  <button id="basemapToggle">🗺️ OSM</button>
 
-    <!-- بحث OSM بسيط -->
-    <div id="searchContainer">
-      <input type="text" id="searchBoxOSM" placeholder="🔍 Rechercher..." />
-      <ul id="suggestions"></ul>
-    </div>
+  <!-- بحث OSM بسيط -->
+  <div id="searchContainer">
+    <input type="text" id="searchBoxOSM" placeholder="🔍 Rechercher..." />
+    <ul id="suggestions"></ul>
+  </div>
 
-    <div id="popup" class="ol-popup"></div>
-  </main>
+  <div id="popup" class="ol-popup"></div>
+</main>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-
   const geojsonSource = new ol.source.Vector({
     url: "https://ia601703.us.archive.org/6/items/prov_ma_202601/prov_ma.txt",
     format: new ol.format.GeoJSON()
@@ -517,21 +549,24 @@ document.addEventListener("DOMContentLoaded", function () {
     window.open(whatsappURL,"_blank");
   };
 
+  const filterProvInput = document.getElementById("filterProv");
+  const filterRegionSelect = document.getElementById("filterRegion");
+  const provTableBody = document.getElementById("provTableBody");
+
   function showPopup(feature, coord){
     const nomFr = feature.get("NOM_PROV") || getProvinceName(feature);
     const nomAr = feature.get("nomArabic") || "";
-
     let html = `
       <b>${nomFr}</b><br>
       <span style="font-weight:bold; color:#FF0000;">
-        Titres fonciers | Bornes | Zonage | ${nomAr}
+      Titres fonciers | Bornes | Zonage | ${nomAr}
       </span><br>
       ℹ️ Données disponibles sur demande<br>
       <button class="request-btn" onclick="downloadProvinceData('${nomFr}')">
-        📱 Demander ces données
+      📱 Demander ces données
       </button><br>
       <button class="download-btn" onclick="contactWhatsApp('${nomFr}')">
-        📞 Contacter via WhatsApp
+      📞 Contacter via WhatsApp
       </button><br><br>
       <a href="mailto:contact@cartomaroc.com">contact@cartomaroc.com</a>
     `;
@@ -582,39 +617,35 @@ document.addEventListener("DOMContentLoaded", function () {
     const query=this.value.trim();
     if(!query){suggestions.style.display="none";return;}
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query+", Maroc")}&limit=5`)
-      .then(res=>res.json())
-      .then(data=>{
-        suggestions.innerHTML="";
-        if(data.length>0){
-          data.forEach(item=>{
-            const li=document.createElement("li");
-            li.textContent=item.display_name;
-            li.addEventListener("click",()=>{
-              const lon=parseFloat(item.lon);
-              const lat=parseFloat(item.lat);
-              map.getView().animate({
-                center:ol.proj.fromLonLat([lon,lat]),
-                zoom:12,
-                duration:1000
-              });
-              suggestions.style.display="none";
-              searchBox.value=item.display_name;
+    .then(res=>res.json())
+    .then(data=>{
+      suggestions.innerHTML="";
+      if(data.length>0){
+        data.forEach(item=>{
+          const li=document.createElement("li");
+          li.textContent=item.display_name;
+          li.addEventListener("click",()=>{
+            const lon=parseFloat(item.lon);
+            const lat=parseFloat(item.lat);
+            map.getView().animate({
+              center:ol.proj.fromLonLat([lon,lat]),
+              zoom:12,
+              duration:1000
             });
-            suggestions.appendChild(li);
+            suggestions.style.display="none";
+            searchBox.value=item.display_name;
           });
-          suggestions.style.display="block";
-        }else{
-          suggestions.style.display="none";
-        }
-      }).catch(err=>console.error(err));
+          suggestions.appendChild(li);
+        });
+        suggestions.style.display="block";
+      }else{
+        suggestions.style.display="none";
+      }
+    }).catch(err=>console.error(err));
   });
   document.addEventListener("click",(e)=>{
     if(e.target!==searchBox) suggestions.style.display="none";
   });
-
-  const filterProvInput = document.getElementById("filterProv");
-  const filterRegionSelect = document.getElementById("filterRegion");
-  const provTableBody = document.getElementById("provTableBody");
 
   geojsonSource.once("change",function(){
     if(geojsonSource.getState()==="ready"){
@@ -626,21 +657,17 @@ document.addEventListener("DOMContentLoaded", function () {
     provTableBody.innerHTML="";
     const features = geojsonSource.getFeatures();
     const added = new Set();
-
     features.forEach(ft=>{
       const nomFr = ft.get("NOM_PROV") || getProvinceName(ft);
       if(added.has(nomFr)) return;
       added.add(nomFr);
-
       const nomAr = ft.get("nomArabic") || "—";
       const region = provinceToRegion[nomFr] || "—";
       const downloadLink = provinceDownloadLinks[nomFr] || null;
-
       const tr = document.createElement("tr");
       tr.dataset.province = nomFr;
       tr.dataset.region = region;
-      tr.dataset.nomAr   = nomAr;
-
+      tr.dataset.nomAr = nomAr;
       tr.innerHTML = `
         <td>${nomFr}</td>
         <td>${region}</td>
@@ -649,7 +676,6 @@ document.addEventListener("DOMContentLoaded", function () {
           ${downloadLink ? `<a href="${downloadLink}" target="_blank">Télécharger</a>` : "✉️"}
         </td>
       `;
-
       tr.addEventListener("click",()=>{
         const ftClicked = features.find(f=>{
           const n = f.get("NOM_PROV") || getProvinceName(f);
@@ -663,7 +689,6 @@ document.addEventListener("DOMContentLoaded", function () {
           showPopup(ftClicked,ol.extent.getCenter(extent));
         }
       });
-
       provTableBody.appendChild(tr);
     });
   }
@@ -671,15 +696,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function applyTableFilters(){
     const txt = filterProvInput.value.trim().toLowerCase();
     const reg = filterRegionSelect.value;
-
     const rows = provTableBody.querySelectorAll("tr");
     rows.forEach(r=>{
-      const prov   = r.dataset.province.toLowerCase();
-      const nomAr  = (r.dataset.nomAr || "").toLowerCase();
+      const prov = r.dataset.province.toLowerCase();
+      const nomAr = (r.dataset.nomAr || "").toLowerCase();
       const region = r.dataset.region;
-
       const matchText = !txt || prov.includes(txt) || nomAr.includes(txt);
-
       if(!txt){
         const matchRegion = !reg || region === reg;
         r.style.display = matchRegion ? "" : "none";
@@ -688,7 +710,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
-
   filterProvInput.addEventListener("keyup",applyTableFilters);
   filterRegionSelect.addEventListener("change",applyTableFilters);
 
@@ -696,7 +717,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const rows = provTableBody.querySelectorAll("tr");
     rows.forEach(r=>r.classList.remove("highlight"));
   }
-
   function highlightRow(provName){
     const rows = provTableBody.querySelectorAll("tr");
     rows.forEach(r=>{
@@ -711,17 +731,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // إظهار/إخفاء الجدول على الهاتف
   const toggleProvBtn = document.getElementById("toggleProv");
   const provContainer = document.getElementById("prov-container");
-
   toggleProvBtn.addEventListener("click",()=>{
     if (getComputedStyle(provContainer).display === "none"){
-      provContainer.style.display = "block";
+      provContainer.style.display = "flex";
       toggleProvBtn.textContent = "✖ Fermer";
     }else{
       provContainer.style.display = "none";
       toggleProvBtn.textContent = "☰ Provinces";
     }
   });
-
 });
 </script>
 </body>
